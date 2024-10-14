@@ -198,6 +198,51 @@ int avcodec_decode_update(struct viddec_state **vdsp,
 	return err;
 }
 
+static int ffdecode_debug(struct viddec_state *st, struct vidframe *frame,
+                    bool *intra)
+{
+    // Simulate decoding by filling the frame with a debug pattern
+    frame->fmt = VID_FMT_YUV420P;  // Assume YUV420P format for simplicity
+    frame->size.w = 640;  // Set a default width
+    frame->size.h = 480;  // Set a default height
+
+    // Allocate memory for the frame if not already allocated
+    for (int i = 0; i < 3; i++) {
+        if (!frame->data[i]) {
+            size_t size = frame->size.w * frame->size.h;
+            if (i > 0) size /= 4;  // For U and V planes
+            frame->data[i] = malloc(size);
+            if (!frame->data[i]) {
+                return ENOMEM;
+            }
+        }
+    }
+
+    // Fill Y plane with a gradient
+    for (int y = 0; y < frame->size.h; y++) {
+        for (int x = 0; x < frame->size.w; x++) {
+            frame->data[0][y * frame->size.w + x] = (uint8_t)((x + y) % 256);
+        }
+    }
+
+    // Fill U and V planes with solid colors
+    memset(frame->data[1], 128, (frame->size.w * frame->size.h) / 4);
+    memset(frame->data[2], 64, (frame->size.w * frame->size.h) / 4);
+
+    // Set up linesize
+    frame->linesize[0] = frame->size.w;
+    frame->linesize[1] = frame->linesize[2] = frame->size.w / 2;
+
+    // Simulate key frame
+    *intra = true;
+    st->got_keyframe = true;
+    st->stats.n_key++;
+
+    // Print debug information
+    printf("Debug ffdecode: Simulated frame %dx%d\n", frame->size.w, frame->size.h);
+
+    return 0;
+}
 
 static int ffdecode(struct viddec_state *st, struct vidframe *frame,
 		    bool *intra)
@@ -440,6 +485,7 @@ int avcodec_decode_h264(struct viddec_state *st, struct vidframe *frame,
 	}
 
 	err = ffdecode(st, frame, &pkt->intra);
+	// err = ffdecode_debug(st, frame, &pkt->intra);
 	if (err)
 		goto out;
 

@@ -20,6 +20,7 @@ set(PROJECT_SOVERSION 18) # bump if ABI breaks
 # Pre-release identifier, comment out on a release
 # Increment for breaking changes (dev2, dev3...)
 #set(PROJECT_VERSION_PRE dev)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(PROJECT_VERSION_PRE)
   set(PROJECT_VERSION_FULL ${PROJECT_VERSION}-${PROJECT_VERSION_PRE})

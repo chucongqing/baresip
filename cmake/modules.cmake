@@ -3,6 +3,7 @@ set(MODULES
   account
   alsa
   amr
+  amediacodec
   aptx
   aubridge
   auconv

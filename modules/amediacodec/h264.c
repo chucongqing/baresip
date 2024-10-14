@@ -12,8 +12,8 @@ static struct h264_vidcodec h264 = {
 		.ench      = h264_encode,
 #endif
 		.decupdh   = h264_decode_update,
-		.dech      = h264_decode,
-		.fmtp_ench = h264_fmtp_enc,
+		.dech      = h264_decode_h264,
+		.fmtp_ench = avcodec_h264_fmtp_enc,
 	},
 };
 
@@ -46,7 +46,7 @@ void unload_h264_codec() {
 }
 
 EXPORT_SYM const struct mod_export DECL_EXPORTS(jdkcodec) = {
-	"jdkcodec",
+	"amediacodec",
 	"codec",
 	module_init,
 	module_close

@@ -2,6 +2,7 @@
 #include <rem.h>
 #include <baresip.h>
 #include <jni.h>
+#include "h264.h"
 
 extern int cb_video(uint8_t* data, int len);  // TODO: register as callback
 
@@ -25,7 +26,7 @@ struct viddec_state {
 
 	uint32_t calculate_rate;
 	uint32_t calculate_size;
-    uint64_t calculate_time;
+	uint64_t calculate_time;
 };
 
 enum {

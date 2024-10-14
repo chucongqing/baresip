@@ -15,6 +15,7 @@ struct vidsrc_st {
 	bool run;
 	int fps;
 	vidsrc_frame_h *frameh;
+	vidsrc_packet_h *packeth;
 	void *arg;
 	struct vidsz size;
 	pthread_mutex_t mutex;
@@ -45,7 +46,7 @@ void my_vidsrc_update_h264(void *buf, int w, int h, int len, bool is_key)
 		pthread_mutex_unlock(&(g_vidsrc_st->mutex));
 		return;
 	}
-	
+
 	h264_packet_send(g_vidsrc_st->arg, buf, len);
 
 	pthread_mutex_unlock(&(g_vidsrc_st->mutex));
@@ -82,7 +83,6 @@ static int src_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
 
 	(void)fmt;
 	(void)dev;
-	(void)packeth;
 	(void)errorh;
 
 	if (!stp || !prm || !size || !frameh)
@@ -97,6 +97,7 @@ static int src_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
 	st->vs     = vs;
 	st->fps    = prm->fps;
 	st->frameh = frameh;
+	st->packeth = packeth;
 	st->arg    = arg;
 	st->size   = *size;
 

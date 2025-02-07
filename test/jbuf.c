@@ -20,7 +20,7 @@ int test_jbuf(void)
 
 	memset(frv, 0, sizeof(frv));
 
-	err = jbuf_alloc(&jb, 0, 10);
+	err = jbuf_alloc(&jb, 0, 10,"1");
 	if (err)
 		return err;
 
@@ -138,7 +138,7 @@ int test_jbuf_adaptive(void)
 	memset(&hdr2, 0, sizeof(hdr2));
 	hdr.ssrc = 1;
 
-	err = jbuf_alloc(&jb, 1, 10);
+	err = jbuf_alloc(&jb, 1, 10,"adaptive");
 	TEST_ERR(err);
 	err = jbuf_set_type(jb, JBUF_ADAPTIVE);
 	TEST_ERR(err);
@@ -247,7 +247,7 @@ int test_jbuf_adaptive_video(void)
 	memset(&hdr2, 0, sizeof(hdr2));
 	hdr.ssrc = 1;
 
-	err = jbuf_alloc(&jb, 1, 10);
+	err = jbuf_alloc(&jb, 1, 10,"adap_vid");
 	TEST_ERR(err);
 	err = jbuf_set_type(jb, JBUF_ADAPTIVE);
 	TEST_ERR(err);

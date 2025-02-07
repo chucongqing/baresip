@@ -14,7 +14,7 @@
 #include <stdlib.h>
 
 #define DEBUG_MODULE "jbuf"
-#define DEBUG_LEVEL 5
+#define DEBUG_LEVEL 7
 #include <re_dbg.h>
 
 
@@ -79,8 +79,38 @@ struct jbuf {
 	uint64_t tr00;       /**< Arrival of first packet                    */
 	char buf[136];       /**< Buffer for trace                           */
 #endif
+#ifdef DEBUG
+	char* dbgmsg;
+#endif
+	char name[32];
 };
 
+static void debug_packetl(struct jbuf *jb) {
+	struct le *head;
+	int idx = 0;
+	head = jb->packetl.head;
+	if (!head) {
+		DEBUG_WARNING("jbuf: packetl is empty\n");
+		return;
+	}
+
+	for(; head; head = head->next) {
+		struct packet *p = head->data;
+		DEBUG_WARNING("i,s,ts:%d,%d,%u\n", idx++,p->hdr.seq, p->hdr.ts);
+	}
+}
+
+static inline void jbuf_n_set(struct jbuf *jb, int32_t n) {
+	if(abs((int)jb->n - n) > 1 && strcmp(jb->name, "video") == 0) {
+		DEBUG_WARNING("jbuf_n_change: n=%d, jb->n=%d jb->nf=%d\n", n, jb->n, jb->nf);
+	}
+
+	if (n == 0 && strcmp(jb->name, "video") == 0) {
+		DEBUG_WARNING("jbuf_n_change: n=%d, jb->n=%d jb->nf=%d\n", n, jb->n, jb->nf);
+	}
+	jb->n = n;
+
+}
 
 /** Is x less than y? */
 static inline bool seq_less(uint16_t x, uint16_t y)
@@ -150,7 +180,9 @@ static void packet_alloc(struct jbuf *jb, struct packet **f)
 	le = jb->pooll.head;
 	if (le) {
 		list_unlink(le);
-		++jb->n;
+		jbuf_n_set(jb, jb->n + 1);
+		// ++jb->n;
+		// DEBUG_INFO("%s alloc and pool size left %d\n",jb->name, list_count(&jb->pooll));
 	}
 	else {
 		struct packet *f0;
@@ -161,8 +193,8 @@ static void packet_alloc(struct jbuf *jb, struct packet **f)
 
 #if JBUF_STAT
 		STAT_INC(n_overflow);
-		DEBUG_WARNING("drop 1 old frame seq=%u (total dropped %u)\n",
-			   f0->hdr.seq, jb->stat.n_overflow);
+		DEBUG_WARNING("drop 1 old frame seq=%u (total dropped %u) jb->packets=%d jb->nf=%u\n",
+			   f0->hdr.seq, jb->stat.n_overflow, jb->n,jb->nf);
 #else
 		DEBUG_WARNING("drop 1 old frame seq=%u\n", f0->hdr.seq);
 #endif
@@ -184,7 +216,9 @@ static void packet_deref(struct jbuf *jb, struct packet *f)
 	f->mem = mem_deref(f->mem);
 	list_unlink(&f->le);
 	list_append(&jb->pooll, &f->le, f);
-	--jb->n;
+	// DEBUG_INFO("%s packet deref and pool size left %d\n",jb->name, list_count(&jb->pooll));
+	jbuf_n_set(jb, jb->n - 1);
+	// DEBUG_INFO("%s packet deref and pool size left %d\n",jb->name, list_count(&jb->pooll));
 }
 
 
@@ -210,7 +244,7 @@ static void jbuf_destructor(void *data)
  *
  * @return 0 if success, otherwise errorcode
  */
-int jbuf_alloc(struct jbuf **jbp, uint32_t min, uint32_t max)
+int jbuf_alloc(struct jbuf **jbp, uint32_t min, uint32_t max, const char* name)
 {
 	struct jbuf *jb;
 	uint32_t i;
@@ -229,6 +263,8 @@ int jbuf_alloc(struct jbuf **jbp, uint32_t min, uint32_t max)
 	if (!jb)
 		return ENOMEM;
 
+	strncpy(jb->name, name, sizeof(jb->name));
+
 	list_init(&jb->pooll);
 	list_init(&jb->packetl);
 
@@ -238,7 +274,7 @@ int jbuf_alloc(struct jbuf **jbp, uint32_t min, uint32_t max)
 	jb->wish = min;
 	tmr_init(&jb->tmr);
 
-	DEBUG_INFO("alloc: delay=%u-%u frames/packets\n", min, max);
+	DEBUG_INFO("%s alloc: delay=%u-%u frames/packets\n",name, min, max);
 
 	jb->pt = -1;
 	err = mutex_alloc(&jb->lock);
@@ -256,7 +292,7 @@ int jbuf_alloc(struct jbuf **jbp, uint32_t min, uint32_t max)
 		}
 
 		list_append(&jb->pooll, &f->le, f);
-		DEBUG_INFO("alloc: adding to pool list %u\n", i);
+		DEBUG_INFO("%s alloc: adding to pool list %u\n",name, i);
 	}
 
 out:
@@ -310,12 +346,18 @@ static void wish_down(void *arg)
 	struct jbuf *jb = arg;
 
 	if (jb->wish > jb->min) {
-		DEBUG_INFO("wish size changed %u --> %u\n", jb->wish,
+		DEBUG_INFO("wish size changed down %u --> %u\n", jb->wish,
 			   jb->wish - 1);
 		--jb->wish;
 	}
 }
 
+static void msleep(unsigned int milliseconds) {
+    struct timespec ts;
+    ts.tv_sec = milliseconds / 1000;          // 秒部分
+    ts.tv_nsec = (milliseconds % 1000) * 1e6; // 纳秒部分（1毫秒=1e6纳秒）
+    nanosleep(&ts, NULL);                     // 忽略中断（实际开发需处理 EINTR）
+}
 
 static void calc_rdiff(struct jbuf *jb, uint16_t seq)
 {
@@ -325,6 +367,7 @@ static void calc_rdiff(struct jbuf *jb, uint16_t seq)
 	float ratio = 1.0;                 /**< Frame packet ratio           */
 	uint32_t wish;
 	uint32_t max = jb->max;
+	int64_t a,b,c,d;
 	bool down = false;
 
 	if (jb->jbtype != JBUF_ADAPTIVE)
@@ -334,16 +377,17 @@ static void calc_rdiff(struct jbuf *jb, uint16_t seq)
 		return;
 
 	if (jb->nf) {
-		ratio = (float)jb->n / (float)jb->nf;
-		max   = (uint32_t)(max / ratio);
+		ratio = (float)jb->n / (float)jb->nf; // 每帧对应的包数
+		max   = (uint32_t)(max / ratio); //
 	}
 
-	rdiff = (int16_t)(jb->seq_put + 1 - seq);
-	adiff = abs(rdiff * JBUF_RDIFF_EMA_COEFF);
-	s = adiff > jb->rdiff ? JBUF_RDIFF_UP_SPEED :
+	a = rdiff = (int16_t)(jb->seq_put + 1 - seq); // 0 or -n
+
+	b = adiff = abs(rdiff * JBUF_RDIFF_EMA_COEFF);
+	c = s = adiff > jb->rdiff ? JBUF_RDIFF_UP_SPEED :
 		jb->wish > 2  ? 1 :
 		jb->wish > 1  ? 2 : 3;
-	jb->rdiff += (adiff - jb->rdiff) * s / JBUF_RDIFF_EMA_COEFF;
+	d = jb->rdiff += (adiff - jb->rdiff) * s / JBUF_RDIFF_EMA_COEFF;
 
 	wish = (uint32_t)(jb->rdiff / (float)JBUF_RDIFF_EMA_COEFF / ratio);
 	if (wish < jb->min)
@@ -354,6 +398,10 @@ static void calc_rdiff(struct jbuf *jb, uint16_t seq)
 
 	if (wish > jb->wish) {
 		DEBUG_INFO("wish size changed %u --> %u\n", jb->wish, wish);
+	 DEBUG_INFO("rdiff1 =%ld, adiff=%ld s = %ld rdiff2=%ld, max = %d\n"
+								"ratio =%.4f jb->seq_put=%d, seq =%d jb->n=%d jb->nf=%d  bad wish = %d\n"
+								,
+								a,b,c,d,max, ratio, jb->seq_put, seq, jb->n,jb->nf, wish);
 		jb->wish = wish;
 	}
 	else if (wish < jb->wish) {
@@ -386,6 +434,29 @@ static inline void send_gnack(struct jbuf *jb, uint16_t last_seq,
 }
 
 
+static void debug_nf(struct jbuf *jb) {
+	struct packet *f;
+	struct le *le;
+	uint32_t t = 0;
+	uint32_t counter = 0;
+	le = jb->packetl.head;
+
+	if (!le) return;
+	f = le->data;
+	t = f->hdr.ts;
+	counter++;
+	for(; le; le = le->next) {
+		f = le->data;
+		if (f->hdr.ts != t) {
+			t = f->hdr.ts;
+			counter +=1;
+		}
+	}
+
+if(jb->nf != counter)
+		DEBUG_WARNING("jbuf: nf = %d  counter=%d \n",jb->nf, counter);
+
+}
 /**
  * Put one packet into the jitter buffer
  *
@@ -528,8 +599,17 @@ success:
 		equal = (fc->hdr.ts == f->hdr.ts);
 	}
 
-	if (!equal)
+	if (!equal) {
 		++jb->nf;
+		debug_nf(jb);
+		// if(strcmp(jb->name, "video") == 0)
+		//  debug("jbuf: %s put success new fram seq=%d ts=%d num of frame=%d, number of packet=%d\n",
+		//  		jb->name, seq, hdr->ts, jb->nf, jb->n);
+	} else {
+		// if(strcmp(jb->name, "video") == 0)
+		//  debug("jbuf: %s put success seq=%u ts=%d num of packet=%d num of frame =%d\n",
+		//  	 jb->name, seq, hdr->ts, jb->n, jb->nf);
+	}
 
 out:
 #ifdef RE_JBUF_TRACE
@@ -554,6 +634,7 @@ int jbuf_get(struct jbuf *jb, struct rtp_header *hdr, void **mem)
 {
 	struct packet *f;
 	int err = 0;
+	int f1 = 0;
 
 	if (!jb || !hdr || !mem)
 		return EINVAL;
@@ -562,8 +643,11 @@ int jbuf_get(struct jbuf *jb, struct rtp_header *hdr, void **mem)
 	STAT_INC(n_get);
 
 	if (jb->nf <= jb->wish || !jb->packetl.head) {
-		DEBUG_INFO("not enough buffer packets - wait.. "
-			   "(n=%u wish=%u)\n", jb->n, jb->wish);
+		if (jb->wish > 100) {
+			DEBUG_INFO("%s not enough buffer packets - wait.. "
+							"(n=%u nf=%u wish=%u)\n",
+							jb->name, jb->n, jb->nf, jb->wish );
+		}
 		STAT_INC(n_underflow);
 		plot_jbuf_event(jb, 'U');
 		err = ENOENT;
@@ -586,8 +670,9 @@ int jbuf_get(struct jbuf *jb, struct rtp_header *hdr, void **mem)
 		else if (seq_diff > 1) {
 			STAT_ADD(n_lost, 1);
 			plot_jbuf_event(jb, 'T');
-			DEBUG_INFO("get: n_lost: diff=%d,seq=%u,seq_get=%u\n",
-				   seq_diff, f->hdr.seq, jb->seq_get);
+			DEBUG_INFO("%s get: n_lost: diff=%d,seq=%u,seq_get=%u n=%u,nf=%u wish=%d\n",
+				   jb->name, seq_diff, f->hdr.seq, jb->seq_get,jb->n,jb->nf,jb->wish);
+			debug_packetl(jb);
 		}
 	}
 #endif
@@ -602,19 +687,29 @@ int jbuf_get(struct jbuf *jb, struct rtp_header *hdr, void **mem)
 	if (f->le.next) {
 		struct packet *next_f = f->le.next->data;
 
-		if (f->hdr.ts != next_f->hdr.ts)
+		if (f->hdr.ts != next_f->hdr.ts) {
 			--jb->nf;
+			f1 = 1;
+		}
 	}
 	else {
 		--jb->nf;
+		f1 = 2;
 	}
 
 	packet_deref(jb, f);
 
+	if(strcmp(jb->name, "video") == 0 && f1) {
+		// DEBUG_INFO("%s n=%u, nf=%u delete=%d\n",jb->name, jb->n, jb->nf, f1);
+	  // debug_packetl(jb);
+	}
+
 	if (jb->nf > jb->wish) {
-		DEBUG_INFO("reducing jitter buffer "
-			   "(nf=%u min=%u wish=%u max=%u)\n",
-			   jb->nf, jb->min, jb->wish, jb->max);
+		if(strcmp(jb->name, "video") == 0) {
+			// DEBUG_INFO("reducing jitter buffer "
+			// 				"(n=%u nf=%u min=%u wish=%u max=%u)\n",
+			// 				jb->n, jb->nf, jb->min, jb->wish, jb->max);
+		}
 		err = EAGAIN;
 	}
 
@@ -705,9 +800,11 @@ void jbuf_flush(struct jbuf *jb)
 		packet_deref(jb, le->data);
 	}
 
-	jb->n       = 0;
+	// jb->n       = 0;
+	jbuf_n_set(jb, 0);
 	jb->nf      = 0;
 	jb->running = false;
+	DEBUG_INFO("flush: %u frames >>>>>>\n", jb->n);
 
 	jb->seq_get = 0;
 #if JBUF_STAT

@@ -719,10 +719,9 @@ int rtprecv_alloc(struct rtp_receiver **rxp,
 	    cfg->audio.jbtype != JBUF_OFF && cfg->audio.jbuf_del.max) {
 
 		err = jbuf_alloc(&rx->jbuf, cfg->audio.jbuf_del.min,
-				 cfg->audio.jbuf_del.max);
+				 cfg->audio.jbuf_del.max, "audio");
 		if (err)
 			goto out;
-
 		err = jbuf_set_type(rx->jbuf, cfg->audio.jbtype);
 		if (err)
 			goto out;
@@ -733,13 +732,14 @@ int rtprecv_alloc(struct rtp_receiver **rxp,
 	    cfg->video.jbtype != JBUF_OFF && cfg->video.jbuf_del.max) {
 
 		err = jbuf_alloc(&rx->jbuf, cfg->video.jbuf_del.min,
-				 cfg->video.jbuf_del.max);
+				 cfg->video.jbuf_del.max, "video");
 		if (err)
 			goto out;
 
 		err = jbuf_set_type(rx->jbuf, cfg->video.jbtype);
 		if (err)
 			goto out;
+
 	}
 
 	rx->metric = metric_alloc();

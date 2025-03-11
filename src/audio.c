@@ -1078,6 +1078,8 @@ static int start_source(struct autx *tx, struct audio *a, struct list *ausrcl)
 				return err;
 		}
 
+		info("audio: start_source: %s.%s\n", tx->module, tx->device);
+
 		err = ausrc_alloc(&tx->ausrc, ausrcl,
 				  tx->module,
 				  &prm, tx->device,

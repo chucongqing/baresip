@@ -361,6 +361,7 @@ static int packet_handler(bool marker, uint64_t ts,
 
 	mtx_lock(vtx->lock_tx);
 	list_append(&vtx->sendq, &qent->le, qent);
+	debug("sendq size %d\n",	list_count(&vtx->sendq));
 	mtx_unlock(vtx->lock_tx);
 
 	cnd_signal(&vtx->wait);
@@ -546,24 +547,24 @@ static int vtx_thread(void *arg)
 
 		jfs = tmr_jiffies_usec();
 
-		if (jfs < target_jfs) {
-			uint64_t delay = target_jfs - jfs;
-			if (delay > max_delay) {
-				delay	  = max_delay;
-				start_jfs = jfs + delay;
-				sent	  = 0;
-			}
-			sys_usleep((unsigned int)delay);
-		}
-		else {
-			if (jfs - max_burst > target_jfs) {
-				start_jfs = jfs - max_burst;
-				sent	  = 0;
-			}
-		}
-
-		sent += mbuf_get_left(qent->mb) * 8;
-		target_jfs = start_jfs + sent * 1000000 / bitrate;
+		// if (jfs < target_jfs) {
+		// 	uint64_t delay = target_jfs - jfs;
+		// 	if (delay > max_delay) {
+		// 		delay	  = max_delay;
+		// 		start_jfs = jfs + delay;
+		// 		sent	  = 0;
+		// 	}
+		// 	sys_usleep((unsigned int)delay);
+		// }
+		// else {
+		// 	if (jfs - max_burst > target_jfs) {
+		// 		start_jfs = jfs - max_burst;
+		// 		sent	  = 0;
+		// 	}
+		// }
+		//
+		// sent += mbuf_get_left(qent->mb) * 8;
+		// target_jfs = start_jfs + sent * 1000000 / bitrate;
 
 		mbd = mbuf_dup(qent->mb);
 
@@ -759,6 +760,8 @@ static int video_stream_decode(struct vrx *vrx, const struct rtp_header *hdr,
 
 	mtx_lock(&vrx->lock);
 
+//	info("video: decode: seq=%u bytes\n", hdr->seq);
+
 	/* No decoder set */
 	if (!vrx->dec) {
 		warning("video: No video decoder!\n");
@@ -774,7 +777,6 @@ static int video_stream_decode(struct vrx *vrx, const struct rtp_header *hdr,
 
 	err = vrx->vc->dech(vrx->dec, frame, &pkt);
 	if (err) {
-
 		if (err != EPROTO) {
 			warning("video: %s decode error"
 				" (seq=%u, %zu bytes): %m\n",
@@ -1303,6 +1305,8 @@ int video_update(struct video *v, const char *peer)
 		video_stop(v);
 		return 0;
 	}
+
+	debug("video udpate begin\n");
 
 	if (dir & SDP_SENDONLY)
 		err = video_encoder_set(v, sc->data, sc->pt, sc->params);

@@ -163,8 +163,8 @@ static void vlog(bool safe, enum log_level level, const char *fmt,
 	int n;
 	struct le *le;
 
-	if (level < lg.level)
-		return;
+	// if (level < lg.level)
+	// 	return;
 
 	if (lg.timestamps) {
 		n = re_snprintf(p, s, "%H|", fmt_timestamp, NULL);

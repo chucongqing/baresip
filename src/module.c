@@ -141,6 +141,7 @@ int module_init(const struct conf *conf)
 	if (!conf)
 		return EINVAL;
 
+
 	if (conf_get(conf, "module_path", &path))
 		pl_set_str(&path, ".");
 

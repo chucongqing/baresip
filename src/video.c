@@ -361,7 +361,7 @@ static int packet_handler(bool marker, uint64_t ts,
 
 	mtx_lock(vtx->lock_tx);
 	list_append(&vtx->sendq, &qent->le, qent);
-	debug("sendq size %d\n",	list_count(&vtx->sendq));
+	// debug("sendq size %d\n",	list_count(&vtx->sendq));
 	mtx_unlock(vtx->lock_tx);
 
 	cnd_signal(&vtx->wait);

@@ -638,14 +638,21 @@ int stream_alloc(struct stream **sp, struct list *streaml,
 		goto out;
 
 	if (mnat && s->rtp) {
+		info("stream: MNAT (%s) call mediah \n", media_name(type));
 		s->mnat = mnat;
 		err = mnat->mediah(&s->mns, mnat_sess,
 				   rtp_sock(s->rtp),
 				   s->cfg.rtcp_mux ? NULL : rtcp_sock(s->rtp),
 				   s->sdp,
 				   rtprecv_mnat_connected_handler, s->rx);
-		if (err)
+		if (err) {
+			warning("stream(%s): mns create failed\n", media_name(type));
 			goto out;
+		} else {
+			info("stream(%s) created mns %p\n", media_name(type), s->mns);
+		}
+	} else {
+		info("not using MNAT (%s) mnat=%p mns=%p\n", media_name(type),s->mnat, s->mns);
 	}
 
 	if (menc && s->rtp) {

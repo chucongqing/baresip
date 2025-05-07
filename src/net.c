@@ -265,7 +265,7 @@ static bool if_debug_handler(const char *ifname, const struct sa *sa,
 	def = sa_cmp(net_laddr_af(baresip_network(), sa_af(sa)), sa, SA_ADDR);
 
 	if (net_af_enabled(net, sa_af(sa)))
-		err = re_hprintf(pf, " %10s:  %j %s\n", ifname, sa,
+		err = re_hprintf(pf, " %10s:  %j:%u %s\n", ifname, sa,sa_port(sa),
 				 def ? "(default)" : "");
 
 	return err != 0;

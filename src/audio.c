@@ -214,7 +214,6 @@ static void audio_destructor(void *arg)
 	mem_deref(a->strm);
 	mem_deref(a->telev);
 	mem_deref(a->aur);
-
 	mem_deref(a->tx.mtx);
 }
 
@@ -518,7 +517,6 @@ void audio_call_telev_handler(const struct audio *au, int key, bool end)
 		au->eventh(key, end, au->arg);
 }
 
-
 /*
  * Read samples from Audio Source
  *
@@ -546,7 +544,9 @@ static void ausrc_read_handler(struct auframe *af, void *arg)
 	}
 
 	if (tx->muted)
+	{
 		auframe_mute(af);
+	}
 
 	if (aubuf_cur_size(tx->aubuf) >= tx->aubuf_maxsz) {
 
@@ -1502,7 +1502,6 @@ void audio_mute(struct audio *a, bool muted)
 {
 	if (!a)
 		return;
-
 	a->tx.muted = muted;
 }
 

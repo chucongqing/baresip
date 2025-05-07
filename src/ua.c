@@ -997,6 +997,7 @@ void ua_handle_options(struct ua *ua, const struct sip_msg *msg)
 			return;
 		}
 
+		info("call add streams on ua handle options\n");
 		err = call_streams_alloc(call);
 		if (err)
 			return;
@@ -1506,6 +1507,8 @@ int ua_answer(struct ua *ua, struct call *call, enum vidmode vmode)
 		if (!call)
 			return ENOENT;
 	}
+
+	info("call: answer: %s vmode %d\n", call_peeruri(call), (int)vmode);
 
 	return call_answer(call, 200, vmode);
 }

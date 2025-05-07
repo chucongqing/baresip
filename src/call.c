@@ -256,6 +256,8 @@ static int call_apply_sdp(struct call *call)
 
 	if (call->video)
 		video_sdp_attr_decode(call->video);
+	else
+		info("??? call no video\n");
 
 	/* Update each stream */
 	FOREACH_STREAM {
@@ -546,7 +548,10 @@ static void stream_rtcp_handler(struct stream *strm,
 		bevent_call_emit(UA_EVENT_CALL_RTCP, call,
 				 "%s", sdp_media_name(stream_sdpmedia(strm)));
 		break;
-
+	case RTCP_FIR:
+		bevent_call_emit(UA_EVENT_CALL_RTCP, call,
+									 "vid_fir");
+		break;
 	case RTCP_APP:
 		bevent_call_emit(UA_EVENT_CALL_RTCP, call,
 				 "%s", sdp_media_name(stream_sdpmedia(strm)));
@@ -762,6 +767,8 @@ int call_streams_alloc(struct call *call)
 				  video_error_handler, call);
 		if (err)
 			return err;
+	} else {
+		info("call(%p) not using video\n", (void*)call);
 	}
 
 	FOREACH_STREAM {
@@ -893,6 +900,8 @@ int call_alloc(struct call **callp, const struct config *cfg, struct list *lst,
 			warning("call: medianat session: %m\n", err);
 			goto out;
 		}
+	} else {
+		info("call: medianat not configured\n");
 	}
 	call->mnat_wait = true;
 
@@ -1062,9 +1071,11 @@ int call_connect(struct call *call, const struct pl *paddr)
 	/* If we are using asynchronous medianat like STUN/TURN, then
 	 * wait until completed before sending the INVITE */
 	if (!call->acc->mnat) {
+		info("call: not using medianat -- sending INVITE\n");
 		err = send_invite(call);
 	}
 	else {
+		info("call: using medianat -- create stream first\n");
 		err = call_streams_alloc(call);
 		if (err)
 			return err;
@@ -1318,7 +1329,7 @@ int call_answer(struct call *call, uint16_t scode, enum vidmode vmode)
 	if (vmode == VIDMODE_OFF)
 		call->video = mem_deref(call->video);
 
-	info("call: answering call on line %u from %s with %u\n",
+	info("call:answering call on line %u from %s with %u\n",
 			call->linenum, call->peer_uri, scode);
 
 	if (call->got_offer) {
@@ -1333,6 +1344,12 @@ int call_answer(struct call *call, uint16_t scode, enum vidmode vmode)
 	err = sdp_encode(&desc, call->sdp, !call->got_offer);
 	if (err)
 		return err;
+
+	if(call->got_offer) {
+		info("call: answer sdp: %s\n", desc->buf);
+	} else {
+		info("call: offer sdp: %s\n", desc->buf);
+	}
 
 	if (scode >= 200 && scode < 300) {
 		err = sipsess_answer(call->sess, scode, "Answering", desc,
@@ -1800,6 +1817,7 @@ static int sipsess_offer_handler(struct mbuf **descp,
 	vmedia = stream_sdpmedia(video_strm(call_video(call)));
 	if (sdp_media_rport(vmedia) == 0 ||
 		list_head(sdp_media_format_lst(vmedia, false)) == 0) {
+		info("no video stream\n");
 		vrdir = SDP_INACTIVE;
 	}
 	else {
@@ -1814,6 +1832,12 @@ static int sipsess_offer_handler(struct mbuf **descp,
 	err = sdp_encode(descp, call->sdp, !got_offer);
 	if (err)
 		return err;
+
+	if(got_offer) {
+		info("call: answer sdp: %.*s\n",(*descp)->end, (*descp)->buf);
+	} else {
+		info("call: offer sdp: %.*s\n",(*descp)->end, (*descp)->buf);
+	}
 
 	bevent_call_emit(UA_EVENT_CALL_LOCAL_SDP, call, "%s",
 			 got_offer ? "answer" : "offer");
@@ -2258,6 +2282,7 @@ int call_accept(struct call *call, struct sipsess_sock *sess_sock,
 			return err;
 	}
 
+	info("call: accept create streams\n");
 	err = call_streams_alloc(call);
 	if (err)
 		return err;
@@ -2372,6 +2397,7 @@ int call_accept(struct call *call, struct sipsess_sock *sess_sock,
 
 	call->estadir = stream_ldir(audio_strm(call_audio(call)));
 	call->estvdir = stream_ldir(video_strm(call_video(call)));
+	info("call: video direction %d\n", call->estvdir);
 	if (!call->acc->mnat)
 		call_event_handler(call, CALL_EVENT_INCOMING, "%s",
                                    call->peer_uri);
@@ -2488,6 +2514,7 @@ static int sipsess_desc_handler(struct mbuf **descp, const struct sa *src,
 		sdp_session_set_laddr(call->sdp, src);
 
 	if (list_isempty(&call->streaml)) {
+		info("call: adding streams on sipsession desc handler\n");
 		err = call_streams_alloc(call);
 		if (err)
 			return err;

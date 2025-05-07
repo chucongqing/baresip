@@ -1168,6 +1168,10 @@ int video_alloc(struct video **vp, struct list *streaml,
 	v->errh = errh;
 	v->arg = arg;
 
+	if(list_count(vidcodecl) == 0) {
+		warning("video: no video codecs configured\n");
+	}
+
 	/* Video codecs */
 	for (le = list_head(vidcodecl); le; le = le->next) {
 		struct vidcodec *vc = le->data;
@@ -1175,6 +1179,12 @@ int video_alloc(struct video **vp, struct list *streaml,
 				      vc->pt, vc->name, 90000, 1,
 				      vc->fmtp_ench, vc->fmtp_cmph, vc, false,
 				      "%s", vc->fmtp);
+		if (err != 0) {
+			warning("video: video-codec '%s' failed to add (%m)\n",
+				vc->name, err);
+		} else {
+			info("video: using codec '%s'\n", vc->name);
+		}
 	}
 
 	/* Video filters */

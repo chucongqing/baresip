@@ -663,7 +663,11 @@ int account_alloc(struct account **accp, const char *sipaddr)
 		if (!acc->mnat) {
 			warning("account: medianat not found: '%s'\n",
 				acc->mnatid);
+		} else {
+			info("account: medianat '%s'\n", acc->mnatid);
 		}
+	} else {
+		info("account: not using medianat\n");
 	}
 
 	if (acc->mencid) {

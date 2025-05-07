@@ -81,7 +81,7 @@ static void errorCallback(AAudioStream *stream, void *userData,
 			  aaudio_result_t error) {
 	struct auplay_st *st = userData;
 	(void)error;
-	pthread_t thread_id;
+	pthread_t thread_id = 0;
 	int res;
 
 	aaudio_stream_state_t streamState = AAudioStream_getState(stream);
@@ -94,7 +94,7 @@ static void errorCallback(AAudioStream *stream, void *userData,
 				res);
 			return;
 		}
-		info("aaudio: player: created new thread (%u)\n", thread_id);
+		info("aaudio: player: created new thread (%ld)\n", thread_id);
 	}
 }
 

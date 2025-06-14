@@ -537,7 +537,6 @@ static void stream_rtcp_handler(struct stream *strm,
 	struct call *call = arg;
 
 	MAGIC_CHECK(call);
-
 	switch (msg->hdr.pt) {
 
 	case RTCP_SR:
@@ -551,6 +550,12 @@ static void stream_rtcp_handler(struct stream *strm,
 		bevent_call_emit(UA_EVENT_CALL_RTCP, call,
 									 "vid_fir");
 		break;
+	case RTCP_PSFB:
+		if (msg->hdr.count == RTCP_PSFB_PLI ||
+		    msg->hdr.count == RTCP_PSFB_FIR) {
+				bevent_call_emit(UA_EVENT_CALL_RTCP, call,
+										 "vid_fir");
+			}
 	case RTCP_APP:
 		bevent_call_emit(UA_EVENT_CALL_RTCP, call,
 				 "%s", sdp_media_name(stream_sdpmedia(strm)));

@@ -84,6 +84,9 @@ struct call {
 	bool use_rtp;
 	char *user_data;           /**< User data related to the call       */
 	bool evstop;               /**< UA events stopped flag, @deprecated */
+
+	struct video *video2;
+	void *_p[10];
 };
 
 
@@ -162,6 +165,8 @@ static void call_stream_stop(struct call *call)
 
 	/* Video */
 	video_stop(call->video);
+
+	video_stop(call->video2);
 
 	tmr_cancel(&call->tmr_inv);
 }

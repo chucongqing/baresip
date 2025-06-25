@@ -258,6 +258,7 @@ const char   *call_alerturi(const struct call *call);
 const char   *call_diverteruri(const struct call *call);
 struct audio *call_audio(const struct call *call);
 struct video *call_video(const struct call *call);
+struct video *call_video2(const struct call *call);
 struct list  *call_streaml(const struct call *call);
 struct ua    *call_get_ua(const struct call *call);
 bool          call_is_onhold(const struct call *call);

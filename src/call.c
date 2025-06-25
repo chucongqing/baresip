@@ -2699,6 +2699,10 @@ struct video *call_video(const struct call *call)
 }
 
 
+struct video *call_video2(const struct call *call)
+{
+	return call ? call->video2 : NULL;
+}
 /**
  * Get the list of media streams for the current call
  *

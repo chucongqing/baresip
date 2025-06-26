@@ -361,6 +361,7 @@ static void call_destructor(void *arg)
 	mem_deref(call->diverter_uri);
 	mem_deref(call->audio);
 	mem_deref(call->video);
+	mem_deref(call->video2);
 	mem_deref(call->sdp);
 	mem_deref(call->mnats);
 	mem_deref(call->mencs);
@@ -1112,7 +1113,7 @@ int call_modify(struct call *call)
 	if (!call)
 		return EINVAL;
 
-	debug("call: modify\n");
+	debug("call: %ld modify\n", (int64_t)call);
 
 	if (call_refresh_allowed(call)) {
 		err = call_sdp_get(call, &desc, true);
@@ -1124,6 +1125,8 @@ int call_modify(struct call *call)
 			if (err)
 				goto out;
 		}
+	} else {
+		debug("call: refresh not allowed\n");
 	}
 
 	err = call_update_media(call);
@@ -2723,6 +2726,13 @@ struct video *call_video(const struct call *call)
 struct video *call_video2(const struct call *call)
 {
 	return call ? call->video2 : NULL;
+}
+
+bool  is_video2(const struct call *call, const struct video *v) {
+	if(!call || !v)
+		return false;
+
+	return call->video2 == v;
 }
 /**
  * Get the list of media streams for the current call

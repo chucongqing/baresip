@@ -43,6 +43,7 @@ struct auframe;
 struct vidframe;
 struct vidrect;
 struct vidsz;
+struct video;
 
 
 /*
@@ -228,6 +229,7 @@ int  call_modify(struct call *call);
 int  call_hold(struct call *call, bool hold);
 void call_set_audio_ldir(struct call *call, enum sdp_dir dir);
 void call_set_video_ldir(struct call *call, enum sdp_dir dir);
+void call_set_video_ldir2(struct call *call, const struct video *video, enum sdp_dir dir);
 int  call_set_video_dir(struct call *call, enum sdp_dir dir);
 int  call_update_media(struct call *call);
 int  call_send_digit(struct call *call, char key);

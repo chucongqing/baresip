@@ -1468,6 +1468,14 @@ void call_set_video_ldir(struct call *call, enum sdp_dir dir)
 	stream_set_ldir(video_strm(call_video(call)), dir);
 }
 
+void call_set_video_ldir2(struct call *call, const struct video *video, enum sdp_dir dir) {
+	if (!call || !video) {
+		info("no call or video\n");
+		return;
+	}
+
+	stream_set_ldir(video_strm(video), dir);
+}
 
 /**
  * Sets the video direction of the given call

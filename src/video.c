@@ -1316,7 +1316,7 @@ int video_update(struct video *v, const char *peer)
 		return 0;
 	}
 
-	debug("video udpate begin\n");
+	debug("video update begin\n");
 
 	if (dir & SDP_SENDONLY)
 		err = video_encoder_set(v, sc->data, sc->pt, sc->params);
@@ -1326,9 +1326,11 @@ int video_update(struct video *v, const char *peer)
 
 	/* Stop / Start source & display*/
 	if (dir & SDP_SENDONLY) {
+		info("video: start source\n");
 		err |= video_start_source(v);
 	}
 	else {
+		info("video: stop source\n");
 		video_stop_source(v);
 	}
 
@@ -1368,8 +1370,10 @@ int video_start_source(struct video *v)
 	if (!v)
 		return EINVAL;
 
-	if (v->vtx.vsrc)
+	if (v->vtx.vsrc) {
+		info("video: source already started %p\n", v->vtx.vsrc);
 		return 0;
+	}
 
 	struct vtx *vtx = &v->vtx;
 
@@ -1487,10 +1491,11 @@ static void video_stop_source(struct video *v)
 	if (!v)
 		return;
 
-	debug("video: stopping video source ..\n");
+	debug("video: stopping video source .. %p\n", v->vtx.vsrc);
 
 	stream_enable_tx(v->strm, false);
 	v->vtx.vsrc = mem_deref(v->vtx.vsrc);
+	v->vtx.vsrc = NULL;
 
 	if (re_atomic_rlx(&v->vtx.run)) {
 		re_atomic_rlx_set(&v->vtx.run, false);
@@ -1518,6 +1523,7 @@ void video_stop_display(struct video *v)
 	debug("video: stopping video display ..\n");
 
 	v->vrx.vidisp = mem_deref(v->vrx.vidisp);
+	v->vrx.vidisp = NULL;
 }
 
 

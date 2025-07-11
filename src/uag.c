@@ -289,7 +289,7 @@ static int uag_transp_add(const struct sa *laddr)
 	if (!sa_isset(laddr, SA_ADDR))
 		return EINVAL;
 
-	info("uag transp add laddr:%j\n", laddr);
+	info("uag transp begin add laddr:%J\n", laddr);
 
 	if (str_isset(uag.cfg->local)) {
 		info("uag cfg local is %s\n", uag.cfg->local);
@@ -303,43 +303,41 @@ static int uag_transp_add(const struct sa *laddr)
 					uag.cfg->local);
 				return err;
 			}
-		} else {
-			info("uag cfg local decode ok = %j\n", &local);
 		}
 
 		if (!sa_isset(&local, SA_ADDR)) {
 			uint16_t port = sa_port(&local);
-			info("sa_isset not true? port = %u\n", port);
+			info("uag not set address get port = %u\n", port);
 			(void)sa_set_sa(&local, &laddr->u.sa);
 			sa_set_port(&local, port);
 		}
 
 		if (!sa_cmp(laddr, &local, SA_ADDR)) {
-			debug("same address laddr:%j  local:%j\n", laddr, &local);
+			debug("same address laddr:%J  local:%J\n", laddr, &local);
 			return 0;
 		}
 
-		info("uag: 1111111 using local address:%j\n", &local);
+		info("uag: 1111111 using local address:%J\n", &local);
 	}
 	else {
-		debug("uag: using passing address:%j\n", laddr);
+		debug("uag: using passing address:%J\n", laddr);
 		sa_cpy(&local, laddr);
 		sa_set_port(&local, 0);
 	}
 
-	debug("uag: 999999 add local address %j\n", &local);
+	debug("uag: begin add local address %J\n", &local);
 
 	if (u32mask_enabled(uag.transports, SIP_TRANSP_UDP))
-		debug("uag: add UDP local address %j\n", &local);
+		debug("uag: add UDP local address %J\n", &local);
 		err |= sip_transp_add(uag.sip, SIP_TRANSP_UDP, &local);
 	if (u32mask_enabled(uag.transports, SIP_TRANSP_TCP)) {
-		debug("uag: add TCP local address %j\n", &local);
+		debug("uag: add TCP local address %J\n", &local);
 		listen = !u32mask_enabled(uag.cfg->reg_filt, SIP_TRANSP_TCP);
 		err |= sip_transp_add_sock(uag.sip, SIP_TRANSP_TCP, listen,
 					   &local);
 	}
 	if (err) {
-		warning("ua: SIP Transport failed: %m\n", err);
+		warning("uag: SIP Transport failed: %m\n", err);
 		return err;
 	}
 

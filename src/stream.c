@@ -353,7 +353,7 @@ void stream_process_rtcp(struct stream *strm, struct rtcp_msg *msg)
 		(void)rtcp_stats(strm->rtp, msg->r.rr.ssrc, &strm->rtcp_stats);
 	}
 
-	info("rtcp_msg pt:%d\n", msg->hdr.pt);
+	// info("rtcp_msg pt:%d\n", msg->hdr.pt);
 
 	if (strm->rtcph)
 		strm->rtcph(strm, msg, strm->arg);

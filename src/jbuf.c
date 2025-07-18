@@ -561,17 +561,27 @@ int jbuf_get(struct jbuf *jb, struct rtp_header *hdr, void **mem)
 	struct packet *f;
 	int err = 0;
 
+	bool packet_pressure = false;
 	if (!jb || !hdr || !mem)
 		return EINVAL;
 
 	mtx_lock(jb->lock);
 	STAT_INC(n_get);
 
-	if (jb->nf <= jb->wish || !jb->packetl.head) {
+	if(jb->n > (jb->max * 8/10)) {
+		packet_pressure = true;
+	}
+
+	if (!packet_pressure && (jb->nf <= jb->wish || !jb->packetl.head)) {
 		DEBUG_INFO("not enough buffer packets - wait.. "
 			   "(n=%u wish=%u)\n", jb->n, jb->wish);
 		STAT_INC(n_underflow);
 		plot_jbuf_event(jb, 'U');
+		err = ENOENT;
+		goto out;
+	}
+
+	if(!jb->packetl.head) {
 		err = ENOENT;
 		goto out;
 	}

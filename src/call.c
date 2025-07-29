@@ -588,7 +588,8 @@ static void stream_rtcp_handler(struct stream *strm,
 		    msg->hdr.count == RTCP_PSFB_FIR) {
 				bevent_call_emit(UA_EVENT_CALL_RTCP, call,
 										 "vid_fir");
-			}break;
+			}
+		break;
 	case RTCP_RTPFB:
 		if(msg->hdr.count == RTCP_RTPFB_TMMBR) {
 				char buf[64] = {0};
@@ -596,7 +597,8 @@ static void stream_rtcp_handler(struct stream *strm,
 										, buf, sizeof(buf));
 				bevent_call_emit(UA_EVENT_CALL_RTCP, call,
 										 buf);
-			}break;
+			}
+		break;
 	case RTCP_APP:
 		bevent_call_emit(UA_EVENT_CALL_RTCP, call,
 				 "%s", sdp_media_name(stream_sdpmedia(strm)));

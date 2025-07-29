@@ -951,12 +951,6 @@ static void rtcp_nack_handler(struct vtx *vtx, struct rtcp_msg *msg)
 	mtx_unlock(vtx->lock_tx);
 }
 
-static void rtcp_tmmbr_handler(struct vtx *vtx, struct rtcp_msg *msg)
-{
-
-	if(!msg || msg->hdr.count	!= RTCP_RTPFB_TMMBR)
-}
-
 
 static void rtcp_handler(struct stream *strm, struct rtcp_msg *msg, void *arg)
 {
@@ -990,7 +984,6 @@ static void rtcp_handler(struct stream *strm, struct rtcp_msg *msg, void *arg)
 
 	case RTCP_RTPFB:
 		rtcp_nack_handler(vtx, msg);
-		rtcp_tmmbr_handler(vtx, msg);
 		break;
 
 	default:
@@ -1163,6 +1156,8 @@ int video_alloc(struct video **vp, struct list *streaml,
 	err |= sdp_media_set_lattr(stream_sdpmedia(v->strm), false,
 				   "rtcp-fb", "* nack pli");
 
+
+	printf("sdp add tmmbr\n");
 	// tmmbr
 	err |= sdp_media_set_lattr(stream_sdpmedia(v->strm), false,
 				   "rtcp-fb", "* tmmbr");

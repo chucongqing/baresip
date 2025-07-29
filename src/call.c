@@ -538,6 +538,32 @@ static void stream_rtpestab_handler(struct stream *strm, void *arg)
 }
 
 
+static uint32_t calculate_bitrate(struct tmmbr *data) {
+	if (!data) return 0;
+	// 根据 RFC 5104: bitrate = mantissa * 2^exp
+	return data->mx_bitrate_mantissa << data->mx_bitrate_exp;
+}
+
+// 将 tmmbr 数据按指定格式写入 buf
+static int format_tmmbr_to_buf(struct tmmbr *data, char *buf, size_t buf_size) {
+	if (!data || !buf || buf_size == 0) {
+		return -1; // 参数错误
+	}
+
+	// 计算比特率
+	uint32_t bitrate = calculate_bitrate(data);
+
+	// 格式化为 "{ssrc 16进制字符},{比特率}"
+	int written = snprintf(buf, buf_size, "tmmbr,%08X,%u", data->ssrc, bitrate);
+
+	// 检查是否写入成功且未截断
+	if (written < 0 || written >= (int)buf_size) {
+		return -1; // 缓冲区太小或格式化错误
+	}
+
+	return 0; // 成功
+}
+
 static void stream_rtcp_handler(struct stream *strm,
 				struct rtcp_msg *msg, void *arg)
 {
@@ -562,7 +588,15 @@ static void stream_rtcp_handler(struct stream *strm,
 		    msg->hdr.count == RTCP_PSFB_FIR) {
 				bevent_call_emit(UA_EVENT_CALL_RTCP, call,
 										 "vid_fir");
-			}
+			}break;
+	case RTCP_RTPFB:
+		if(msg->hdr.count == RTCP_RTPFB_TMMBR) {
+				char buf[64] = {0};
+				format_tmmbr_to_buf(msg->r.fb.fci.tmmbr
+										, buf, sizeof(buf));
+				bevent_call_emit(UA_EVENT_CALL_RTCP, call,
+										 buf);
+			}break;
 	case RTCP_APP:
 		bevent_call_emit(UA_EVENT_CALL_RTCP, call,
 				 "%s", sdp_media_name(stream_sdpmedia(strm)));

@@ -681,6 +681,24 @@ static void send_fir(struct stream *s, bool pli)
 	}
 }
 
+void video_reqest_remote_keyframe(struct video *vid) {
+	if(!vid) {
+		return;
+	}
+
+	struct video *v = vid;
+	struct vrx *vrx = &v->vrx;
+
+	if (tmr_isrunning(&vrx->tmr_picup))
+		return;
+
+	tmr_start(&vrx->tmr_picup, PICUP_INTERVAL, picup_tmr_handler, vrx);
+
+	/* send RTCP FIR to peer */
+	send_fir(v->strm, false);
+
+	++vrx->n_picup;
+}
 
 static void request_picture_update(struct vrx *vrx)
 {

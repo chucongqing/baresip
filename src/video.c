@@ -681,7 +681,7 @@ static void send_fir(struct stream *s, bool pli)
 	}
 }
 
-void video_reqest_remote_keyframe(struct video *vid) {
+void video_req_remote_keyframe(struct video *vid) {
 	if(!vid) {
 		return;
 	}
@@ -1654,6 +1654,8 @@ int video_encoder_set(struct video *v, struct vidcodec *vc,
 		}
 
 		vtx->vc = vc;
+	} else {
+		info("video: reusing encoder %s\n", vc->name);
 	}
 
 	stream_update_encoder(v->strm, pt_tx);
@@ -1709,6 +1711,8 @@ int video_decoder_set(struct video *v, struct vidcodec *vc, int pt_rx,
 		}
 
 		vrx->vc = vc;
+	} else {
+		info("video: reusing decoder %s\n", vc->name);
 	}
 
 	return err;

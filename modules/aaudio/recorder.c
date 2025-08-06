@@ -242,6 +242,12 @@ int aaudio_recorder_alloc(struct ausrc_st **stp, const struct ausrc *as,
 		goto out;
 	}
 
+	module_event("aaudio", "src param", NULL, NULL,
+							"srate=%d,ch=%d,ptime=%d,fmt=%d,dur=%ld,aptr=%ld",
+							prm->srate, prm->ch,
+							prm->ptime, prm->fmt,
+							prm->duration, (int64_t)arg); //arg is audio pointer
+
 	module_event("aaudio", "recorder sessionid", NULL, NULL, "%d",
 		     AAudioStream_getSessionId(st->recorderStream));
 

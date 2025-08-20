@@ -87,6 +87,7 @@ struct call {
 
 	struct video *video2;
 	void *_p[10];
+	char* remote_party_id;
 };
 
 
@@ -369,6 +370,7 @@ static void call_destructor(void *arg)
 	mem_deref(call->not);
 	mem_deref(call->acc);
 	mem_deref(call->user_data);
+	mem_deref(call->remote_party_id);
 
 	list_flush(&call->custom_hdrs);
 }
@@ -879,6 +881,7 @@ int call_alloc(struct call **callp, const struct config *cfg, struct list *lst,
 {
 	struct call *call;
 	enum vidmode vidmode = prm ? prm->vidmode : VIDMODE_OFF;
+	const struct sip_hdr *hdr;
 	int err = 0;
 
 	if (!cfg || !local_uri || !acc || !ua || !prm)
@@ -1652,6 +1655,12 @@ const char *call_alerturi(const struct call *call)
 }
 
 
+const char *call_remote_party_id(const struct call *call)
+{
+	return call ? call->remote_party_id : NULL;
+}
+
+
 /**
  * Print the call debug information
  *
@@ -1917,10 +1926,12 @@ static int sipsess_answer_handler(const struct sip_msg *msg, void *arg)
 
 	call->got_offer = false;
 	if (!pl_strcmp(&msg->cseq.met, "INVITE") &&
-	    msg->scode >= 200 && msg->scode < 300 &&
-	    call_state(call) != CALL_STATE_ESTABLISHED)
+		msg->scode >= 200 && msg->scode < 300 &&
+		call_state(call) != CALL_STATE_ESTABLISHED) {
+
 		call_event_handler(call, CALL_EVENT_ANSWERED, "%s",
-                                   call->peer_uri);
+										 call->peer_uri);
+	}
 
 	if (msg_ctype_cmp(&msg->ctyp, "multipart", "mixed"))
 		(void)sdp_decode_multipart(&msg->ctyp.params, msg->mb);
@@ -2424,9 +2435,11 @@ int call_accept(struct call *call, struct sipsess_sock *sess_sock,
 			     sipsess_estab_handler, sipsess_info_handler,
 			     call->acc->refer ? sipsess_refer_handler : NULL,
 			     sipsess_close_handler,
-			     call, "Allow: %H\r\n%H",
+			     call, "Allow: %H\r\n%H\r\n%H",
 			     ua_print_allowed, call->ua,
-			     ua_print_require, call->ua);
+			     ua_print_displayname, call->ua,
+			     ua_print_require, call->ua
+											);
 
 	if (err) {
 		warning("call: sipsess_accept: %m\n", err);
@@ -2497,6 +2510,22 @@ static void sipsess_progr_handler(const struct sip_msg *msg, void *arg)
 
 	if (msg->scode <= 100)
 		return;
+
+	if(call->peer_name == NULL) {
+		const struct sip_hdr *hdr = sip_msg_xhdr(msg, "X-Display-Name");
+
+		if (hdr) {
+			pl_strdup(&call->peer_name, &hdr->val);
+		}
+	}
+
+	if(call->remote_party_id == NULL) {
+		const struct sip_hdr*	hdr = sip_msg_xhdr(msg,"Remote-Party-ID");
+		if (hdr) {
+			pl_strdup(&call->remote_party_id, &hdr->val);
+			info("call: remote-party-id: %s\n", call->remote_party_id);
+		}
+	}
 
 	/* check for 18x and content-type
 	 *

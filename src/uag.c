@@ -575,7 +575,6 @@ int ua_init(const char *software, bool udp, bool tcp, bool tls)
 		goto out;
 	}
 
-	info("ua 9999 transport init!\n");
 	err = ua_transp_addall(net);
 	if (err)
 		goto out;

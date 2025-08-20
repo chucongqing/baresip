@@ -372,6 +372,7 @@ void         ua_printf(const struct ua *ua, const char *fmt, ...);
 
 int ua_print_allowed(struct re_printf *pf, const struct ua *ua);
 int ua_print_require(struct re_printf *pf, const struct ua *ua);
+int ua_print_displayname(struct re_printf *pf, const struct ua *ua);
 struct call *ua_find_call_onhold(const struct ua *ua);
 struct call *ua_find_active_call(struct ua *ua);
 void ua_handle_options(struct ua *ua, const struct sip_msg *msg);

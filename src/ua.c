@@ -2010,6 +2010,18 @@ int ua_print_supported(struct re_printf *pf, const struct ua *ua)
 }
 
 
+int ua_print_displayname(struct re_printf *pf, const struct ua *ua)
+{
+	int err = 0;
+
+	if (!ua)
+		return 0;
+
+	if (str_isset(ua->acc->dispname))
+		err = re_hprintf(pf, "X-Display-Name: %s", ua->acc->dispname);
+
+	return err;
+}
 /**
  * Print the required extensions
  *

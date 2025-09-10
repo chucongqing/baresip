@@ -1839,6 +1839,11 @@ static int auth_handler(char **username, char **password,
 }
 
 
+struct call_and_msg {
+	struct call	*call;
+	const struct sip_msg *msg;
+};
+
 static int sipsess_offer_handler(struct mbuf **descp,
 				 const struct sip_msg *msg, void *arg)
 {
@@ -1855,6 +1860,11 @@ static int sipsess_offer_handler(struct mbuf **descp,
 			stream_sdpmedia(audio_strm(call->audio));
 		bool aurx = sdp_media_dir(m) & SDP_SENDONLY;
 		call->got_offer = true;
+		struct call_and_msg call_and_msg = {
+			.call = call,
+			.msg = msg,
+		};
+		bevent_app_emit(UA_EVENT_CUSTOM, (void*)&call_and_msg , "reinvite_before_decode");
 
 		/* Decode SDP Offer */
 		err = sdp_decode(call->sdp, msg->mb, true);
@@ -2467,11 +2477,11 @@ int call_accept(struct call *call, struct sipsess_sock *sess_sock,
 
 	call->estadir = stream_ldir(audio_strm(call_audio(call)));
 	call->estvdir = stream_ldir(video_strm(call_video(call)));
-	info("call: video direction %d\n", call->estvdir);
+	info("call: video direction > %d\n", call->estvdir);
 	if (!call->acc->mnat)
 		call_event_handler(call, CALL_EVENT_INCOMING, "%s",
                                    call->peer_uri);
-
+	info("call: bbbbb\n");
 	return 0;
 }
 
@@ -2527,6 +2537,8 @@ static void sipsess_progr_handler(const struct sip_msg *msg, void *arg)
 		}
 	}
 
+	info("call: msgctype: %r/%r\n", &msg->ctyp.type, &msg->ctyp.subtype);
+	info("call: %zu bytes left\n", mbuf_get_left(msg->mb));
 	/* check for 18x and content-type
 	 *
 	 * 1. start media-stream if application/sdp
@@ -2547,6 +2559,8 @@ static void sipsess_progr_handler(const struct sip_msg *msg, void *arg)
 	}
 	else
 		media = false;
+
+	info("call: 18x has media: %d\n", media);
 
 	switch (msg->scode) {
 
